@@ -1,0 +1,389 @@
+rem disparition de la souris
+hide mouse
+
+rem tout sur les fichiers
+dim record(1)
+dim record$(1)
+dim last(1)
+dim last$(1)
+load array "record",record(1)
+load array "recordname",record$(1)
+load array "last",last(1)
+load array "lastname",last$(1)
+if record$(1)="" then record$(1)="Personne"
+if last$(1)="" then last$(1)="Personne"
+
+rem musique du menu
+load sound "menu.wav",100
+loop sound 100
+goto menu
+
+rem menu
+menu:
+cls
+print "BLOK v0.1"
+print "Si vous jouez pour la première fois,"
+print "appuyez sur "h", sinon, appuyez sur "p""
+print "Appuyez sur "p" à tout moment dans le jeu pour faire pause."
+print " "
+print "Record : "
+print "",record$(1)," : ",record(1)," point(s)"
+print " "
+print "Dernier joueur : "
+print "",last$(1)," : ",last(1)," point(s)"
+do
+if inkey$()="h" 
+	help=1
+	goto help
+endif
+if inkey$()="p" then goto play
+loop
+
+rem menu "help"
+help:
+cls
+set cursor 0,0
+print "Cherchez et passer sur les sphères immobiles au sol."
+print "Une sphère verte ajoute 2 points, une sphère jaune en rajoute 10."
+print "Trouvez-en le plus possible pour obtenir le plus haut score !"
+print "Une sphère blanche essaiera de vous percuter. T"
+print "Voici les commandes :"
+print "FLECHES HAUT/BAS : avancer/reculer"
+print "FLECHES DROITE/GAUCHE : tourner à droite/tourner à gauche"
+print "SOURIS CLIC GAUCHE : tirer"
+print " "
+print "La musique est différente selon le nombre de vies restantes."
+print "Quand vos vies sont à zéro, vous entendez "GAME OVER" et le jeu s'arrête."
+print "Lors du prochain demarrage, le jeu affichera le score du meilleur joueur et son pseudo,"
+print "ainsi que le score et le pseudo du dernier joueur ayant joué. Ces scores et ces pseudos sont"
+print "stockés dans les fichiers "record" et "recordname" pour le record, et dans"
+print ""last" et "lastname". Si vous les supprimez, tous les scores et les pseudos"
+print "seront perdus."
+print " "
+print "Appuyez sur une touche pour jouer."
+suspend for key
+goto play
+
+rem menu "cheat"
+cheat:
+
+
+rem on entre son pseudo, et on joue!
+play:
+if help=1
+	set cursor 0,420
+else
+	set cursor 0,180
+endif
+input "Entrez votre pseudo pour votre score!                >",name$
+stop sound 100
+
+rem reglage de la cam
+autocam off
+if catvision=1
+	set camera range 1,3000
+else
+	set camera range 1,1500
+endif
+
+rem Fabrique une matrix
+make matrix 1,10000.0,10000.0,25,25
+randomize matrix 1,100.0
+set matrix height 1,12,12,300.0
+update matrix 1
+
+rem Fabrique un BLOK
+make object cube 1,100.0
+load bitmap "blok.bmp",1
+get image 1,0,0,124,107
+texture object 1,1
+
+rem chargement des sons
+load sound "walk.wav",1
+load sound "rotate.wav",2
+load sound "shoot.wav",3
+load sound "explode.wav",4
+load 3dsound "walk.wav",10
+load sound "2 lifes.wav",11
+load sound "last life.wav",12
+load sound "score.wav",13
+load sound "pause.wav",14
+load sound "booster.wav",15
+load sound "super booster.wav",16
+
+rem chargement des musiques
+load sound "music.wav",5
+loop sound 5
+load sound "music-2.wav",6
+loop sound 6
+pause sound 6
+load sound "music-3.wav",7
+loop sound 7
+pause sound 7
+
+rem fabrique les BLOKs ennemis
+make object cube 10,100.0
+load bitmap "blok.bmp",10
+get image 10,0,0,124,107
+texture object 10,10
+m10x#=rnd(10000)
+m10z#=rnd(10000)
+m10y#=get ground height(1,m10x#,m10z#)+50
+position object 10,m10x#,m10y#,m10z#
+
+rem fabrique le projectile
+make object sphere 2,20
+hide object 2
+color object 2,rgb(255,0,0)
+
+rem fabrique cinq boosters verts
+for t=1 to 5
+	make object sphere t*10+1,50
+	color object t*10+1,rgb(0,255,0)
+	xbooster#=rnd(10000)
+	zbooster#=rnd(10000)
+	ybooster#=get ground height(1,xbooster#,zbooster#)+50
+	position object t*10+1,xbooster#,ybooster#,zbooster#
+	set object collision to spheres t*10+1
+next t
+
+rem fabrique un super booster jaune
+make object sphere 17,50
+color object 17,rgb(255,255,0)
+xbooster#=rnd(10000)
+zbooster#=rnd(10000)
+ybooster#=get ground height(1,xbooster#,zbooster#)+50
+position object 17,xbooster#,ybooster#,zbooster#
+set object collision to spheres 17
+
+rem Définit les coordonnées du personnage
+x#=500
+z#=500
+
+rem gestion des collisions
+set object collision to spheres 2
+set object collision to boxes 10
+
+rem initialisation du score et des vies
+life=3
+score=0
+
+rem Boucle des sons
+loop sound 1
+loop sound 2
+loop sound 10
+
+rem Définit le mode de rafraîchissement écran comme manuel
+sync on
+
+rem Début de boucle
+do
+
+for maction=1 to 2
+	point object 10,object position x(1),object position y(1),object position z(1)
+	m10x#=newxvalue(m10x#,object angle y(10),10+speedmonster)
+	m10z#=newzvalue(m10z#,object angle y(10),10+speedmonster)
+	m10y#=get ground height(1,m10x#,m10z#)+50
+	position object 10,m10x#,m10y#,m10z#
+	position sound 10,m10x#,m10y#,m10z#
+	if object hit(10,1)
+		play sound 4
+		x#=rnd(10000)
+		z#=rnd(10000)
+		y#=get ground height(1,x#,z#)+50
+		position object 1,x#,y#,z#
+		life=life-1
+		if life=2 then play sound 11
+		if life=1 then play sound 12
+	endif
+next maction
+
+rem position et rotation de l'auditeur
+position listener camera position x(),camera position y(),camera position z()
+rotate listener camera angle x(),camera angle y(), camera angle z()
+
+rem positions des sons
+position sound 1,object position x(1),object position y(1), object position z(1)
+position sound 2,object position x(1), object position y(1), object position z(1)
+
+rem Les touches flechées font avancer et reculer
+if upkey()=1
+	x#=newxvalue(x#,a#,20+speed) : z#=newzvalue(z#,a#,20+speed) : sound1=1
+else
+	if downkey()=1
+	x#=newxvalue(x#,a#,-20-speed) : z#=newzvalue(z#,a#,-20-speed) : sound1=1
+	else
+		sound1=0
+	endif
+endif
+
+rem La souris contrôle l'orientation
+a# = wrapvalue(a# + mousemovex())
+if mousemovex()=0
+	sound2=0
+else
+	sound2=1
+endif
+
+rem Chargement des sons
+if sound1=1 
+	set sound volume 1,90
+else
+	set sound volume 1,0
+endif
+if sound2=1
+	set sound volume 2,90
+else
+	set sound volume 2,0
+endif
+
+rem FEU!
+if mouseclick()=1 and bulletlife=0
+	position object 2,x#,y#,z#
+	set object to object orientation 2,1
+	if gigabullet=1
+		bulletlife=20
+	else
+		bulletlife=25
+	endif
+	show object 2
+	play sound 3
+endif
+if bulletlife>0
+	dec bulletlife
+	if gigabullet=1
+		move object 2,150
+	else
+		move object 2,100
+	endif
+	if object hit(10,2)>0
+		bulletlife=0
+		play sound 4
+		m10x#=rnd(10000)
+		m10z#=rnd(10000)
+		m10y#=get ground height(1,m10x#,m10z#)+50
+		position object 10,m10x#,m10y#,m10z#
+		score=score+1
+		play sound 13
+	endif
+	if bulletlife=0 then hide object 2
+endif
+
+rem Quelle musique?
+if life=2
+	stop sound 5
+	resume sound 6
+	set sound volume 6,70
+endif
+if life=1
+	stop sound 5
+	stop sound 6
+	resume sound 7
+	set sound volume 7,100
+endif
+
+rem game over!
+if life=0
+	stop sound 7
+	delete object 1
+	delete object 2
+	for t=1 to 5
+		delete object t*10+1
+	next t
+	delete object 10
+	delete matrix 1
+	delete sound 1
+	delete sound 2
+	delete sound 3
+	delete sound 4
+	delete sound 5
+	delete sound 6
+	delete sound 7
+	delete sound 10
+	load sound "gameover.wav",1
+	dim record(1)
+	dim record$(1)
+	load array "record",record(1)
+	if record(1)<score
+		record(1)=score
+		record$(1)=name$
+		save array "record",record(1)
+		save array "recordname",record$(1)
+		last(1)=score
+		last$(1)=name$
+		save array "last",last(1)
+		save array "lastname",last$(1)
+	else
+		last(1)=score
+		last$(1)=name$
+		save array "last",last(1)
+		save array "lastname",last$(1)
+	endif
+	play sound 1
+	sleep 2000
+	exit
+endif
+
+rem si le joueur touche un booster
+for t=1 to 5
+	if object hit(t*10+1,1)>0
+		score=score+2
+		play sound 15
+		xbooster#=rnd(10000)
+		zbooster#=rnd(10000)
+		ybooster#=get ground height(1,xbooster#,zbooster#)
+		position object t*10+1,xbooster#,ybooster#,zbooster#
+	endif
+next t
+
+rem si le joueur touche le super booster
+if object hit(17,1)>0
+	score=score+10
+	play sound 16
+	xbooster#=rnd(10000)
+	zbooster#=rnd(10000)
+	ybooster#=get ground height(1,xbooster#,zbooster#)
+	position object 17,xbooster#,ybooster#,zbooster#
+endif
+
+rem Mise à jour du personnage
+y#=get ground height(1,x#,z#)+50.0
+position object 1,x#,y#,z#
+yrotate object 1,a#
+
+rem Positionne la caméra derrière le personnage
+cx#=newxvalue(x#,wrapvalue(a#+180),300)
+cz#=newzvalue(z#,wrapvalue(a#+180),300)
+cy#=get ground height(1,cx#,cz#)+200.0
+position camera cx#,cy#,cz#
+
+rem Oriente la caméra vers l'objet
+point camera x#,y#,z#
+
+rem position de l'auditeur
+position listener camera position x(),camera position y(),camera position z()
+rotate listener camera angle x(),camera angle y(),camera angle z()
+
+rem menu pause
+if inkey$()="p"
+	pause sound 5
+	pause sound 6
+	pause sound 7
+	pause sound 10
+	play sound 14
+	do
+	if inkey$()="r" 
+		rem resume sound 5
+		rem resume sound 6
+		rem resume sound 7
+		rem resume sound 10
+		exit
+	endif
+	loop
+endif
+
+rem Rafraîchissement de l'écran
+sync
+
+rem Fin de boucle
+loop
